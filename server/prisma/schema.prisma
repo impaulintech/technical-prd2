@@ -18,20 +18,20 @@ enum Priority {
   high
 }
 
-model Board {
+model board {
   id          Int      @id @default(autoincrement())
   name        String
   description String?
   color       String?
-  tasks       Task[]
+  tasks       task[]
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 }
 
-model Task {
+model task {
   id          Int       @id @default(autoincrement())
   board_id    Int
-  board       Board     @relation(fields: [board_id], references: [id], onDelete: Cascade)
+  board       board     @relation(fields: [board_id], references: [id], onDelete: Cascade)
   title       String
   description String?
   status      Status
