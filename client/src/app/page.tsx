@@ -129,10 +129,106 @@ export default function Home() {
     }
   };
 
+  const exportToJSON = () => {
+    const dataToExport = {
+      exportDate: new Date().toISOString(),
+      statistics,
+      boards: boards.map((board) => ({
+        ...board,
+        taskCount: board.tasks.length,
+      })),
+    };
+
+    const jsonString = JSON.stringify(dataToExport, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `boards-export-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToCSV = () => {
+    // Prepare CSV content
+    let csvContent =
+      "Board Name,Board Description,Task Count,Total Tasks,Todo Count,In Progress Count,Done Count,Completion %\n";
+
+    boards.forEach((board) => {
+      const taskCount = board.tasks.length;
+      const row = [
+        `"${board.name.replace(/"/g, '""')}"`,
+        `"${(board.description || "").replace(/"/g, '""')}"`,
+        taskCount,
+        statistics.totalTasks,
+        statistics.todoCount,
+        statistics.inProgressCount,
+        statistics.doneCount,
+        `${statistics.completionPercentage}%`,
+      ].join(",");
+      csvContent += row + "\n";
+    });
+
+    // Add tasks section
+    csvContent += "\n\nTasks by Board\n";
+    csvContent +=
+      "Board Name,Task Title,Task Description,Status,Assigned To,Priority,Due Date,Created Date\n";
+
+    boards.forEach((board) => {
+      board.tasks.forEach((task) => {
+        const row = [
+          `"${board.name.replace(/"/g, '""')}"`,
+          `"${task.title.replace(/"/g, '""')}"`,
+          `"${(task.description || "").replace(/"/g, '""')}"`,
+          task.status,
+          `"${(task.assigned_to || "").replace(/"/g, '""')}"`,
+          task.priority,
+          task.due_date
+            ? new Date(task.due_date).toLocaleDateString()
+            : "Not set",
+          new Date(task.created_at).toLocaleDateString(),
+        ].join(",");
+        csvContent += row + "\n";
+      });
+    });
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `boards-export-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div>
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Export Section */}
+        <div className="mb-8 flex gap-2 justify-end">
+          <Button
+            onClick={exportToJSON}
+            disabled={loading || boards.length === 0}
+            variant="outline"
+            className="cursor-pointer"
+          >
+            📥 Export as JSON
+          </Button>
+          <Button
+            onClick={exportToCSV}
+            disabled={loading || boards.length === 0}
+            variant="outline"
+            className="cursor-pointer"
+          >
+            📥 Export as CSV
+          </Button>
+        </div>
+
         {/* Analytics Section */}
         <div className="mb-12">
           <h2 className="text-2xl font-bold mb-6">Analytics</h2>
