@@ -69,6 +69,9 @@ export default function BoardDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openTaskDialog, setOpenTaskDialog] = useState(false);
+  const [openTaskDetailDialog, setOpenTaskDetailDialog] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isEditingTask, setIsEditingTask] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [taskFormData, setTaskFormData] = useState({
     title: "",
@@ -138,6 +141,76 @@ export default function BoardDetailPage() {
         type: "error",
       });
       console.error("Error creating task:", err);
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const handleOpenTaskDetail = (task: Task) => {
+    setSelectedTask(task);
+    setTaskFormData({
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      assigned_to: task.assigned_to || "",
+      priority: task.priority,
+      due_date: task.due_date ? task.due_date.split("T")[0] : "",
+    });
+    setIsEditingTask(false);
+    setOpenTaskDetailDialog(true);
+  };
+
+  const handleUpdateTask = async () => {
+    if (!selectedTask) return;
+    try {
+      await axios.put(
+        `${process.env.NEXT_PUBLIC_API_URL}/tasks/${selectedTask.id}`,
+        {
+          ...taskFormData,
+          board_id: selectedTask.board_id,
+        }
+      );
+      setToast({
+        message: `Task "${taskFormData.title}" updated successfully!`,
+        type: "success",
+      });
+      setIsEditingTask(false);
+      // Refetch board data
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/boards/${boardId}`);
+      setBoard(response.data);
+      setOpenTaskDetailDialog(false);
+      setTimeout(() => setToast(null), 3000);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to update task";
+      setToast({
+        message: errorMessage,
+        type: "error",
+      });
+      console.error("Error updating task:", err);
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const handleDeleteTask = async () => {
+    if (!selectedTask) return;
+    if (!confirm("Are you sure you want to delete this task?")) return;
+    try {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${selectedTask.id}`);
+      setToast({
+        message: "Task deleted successfully!",
+        type: "success",
+      });
+      setOpenTaskDetailDialog(false);
+      // Refetch board data
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/boards/${boardId}`);
+      setBoard(response.data);
+      setTimeout(() => setToast(null), 3000);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete task";
+      setToast({
+        message: errorMessage,
+        type: "error",
+      });
+      console.error("Error deleting task:", err);
       setTimeout(() => setToast(null), 3000);
     }
   };
@@ -313,7 +386,8 @@ export default function BoardDetailPage() {
               {board.tasks.map((task) => (
                 <div
                   key={task.id}
-                  className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleOpenTaskDetail(task)}
+                  className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer hover:bg-muted/50"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-lg font-semibold">{task.title}</h3>
@@ -366,6 +440,196 @@ export default function BoardDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Task Detail Side Panel */}
+        <Sheet open={openTaskDetailDialog} onOpenChange={setOpenTaskDetailDialog}>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>
+                {isEditingTask ? "Edit Task" : "Task Details"}
+              </SheetTitle>
+              <SheetDescription>
+                {isEditingTask
+                  ? "Update task information"
+                  : "View task details"}
+              </SheetDescription>
+            </SheetHeader>
+            {selectedTask && (
+              <div className="space-y-4 mt-6 px-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Title</label>
+                  {isEditingTask ? (
+                    <input
+                      type="text"
+                      name="title"
+                      value={taskFormData.title}
+                      onChange={handleTaskInputChange}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {taskFormData.title}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Description</label>
+                  {isEditingTask ? (
+                    <textarea
+                      name="description"
+                      value={taskFormData.description}
+                      onChange={handleTaskInputChange}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      rows={3}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {taskFormData.description || "No description"}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  {isEditingTask ? (
+                    <select
+                      name="status"
+                      value={taskFormData.status}
+                      onChange={handleTaskInputChange}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="todo">To Do</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="done">Done</option>
+                    </select>
+                  ) : (
+                    <span
+                      className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
+                      style={{
+                        backgroundColor: statusColors[taskFormData.status],
+                      }}
+                    >
+                      {taskFormData.status.replace("_", " ")}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Assigned To</label>
+                  {isEditingTask ? (
+                    <input
+                      type="text"
+                      name="assigned_to"
+                      value={taskFormData.assigned_to}
+                      onChange={handleTaskInputChange}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {taskFormData.assigned_to || "Not assigned"}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Priority</label>
+                  {isEditingTask ? (
+                    <select
+                      name="priority"
+                      value={taskFormData.priority}
+                      onChange={handleTaskInputChange}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  ) : (
+                    <span
+                      className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
+                      style={{
+                        backgroundColor:
+                          priorityColors[taskFormData.priority],
+                      }}
+                    >
+                      {taskFormData.priority}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Due Date</label>
+                  {isEditingTask ? (
+                    <input
+                      type="date"
+                      name="due_date"
+                      value={taskFormData.due_date}
+                      onChange={handleTaskInputChange}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {taskFormData.due_date
+                        ? new Date(taskFormData.due_date).toLocaleDateString()
+                        : "No due date"}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Created</label>
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(selectedTask.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Last Updated</label>
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(selectedTask.updated_at).toLocaleDateString()}
+                  </p>
+                </div>
+
+                <div className="pt-4 flex gap-2">
+                  {isEditingTask ? (
+                    <>
+                      <Button
+                        onClick={handleUpdateTask}
+                        className="flex-1 cursor-pointer"
+                      >
+                        Save Changes
+                      </Button>
+                      <Button
+                        onClick={() => setIsEditingTask(false)}
+                        variant="outline"
+                        className="flex-1 cursor-pointer"
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        onClick={() => setIsEditingTask(true)}
+                        className="flex-1 cursor-pointer"
+                      >
+                        Edit Task
+                      </Button>
+                      <Button
+                        onClick={handleDeleteTask}
+                        variant="destructive"
+                        className="flex-1 cursor-pointer"
+                      >
+                        Delete
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </SheetContent>
+        </Sheet>
       </main>
     </div>
   );
