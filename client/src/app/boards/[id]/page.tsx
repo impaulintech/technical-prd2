@@ -83,7 +83,7 @@ export default function BoardDetailPage() {
     const fetchBoard = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:3001/api/boards/${boardId}`
+          `${process.env.NEXT_PUBLIC_API_URL}/boards/${boardId}`
         );
         setBoard(response.data);
       } catch (err) {
@@ -110,7 +110,7 @@ export default function BoardDetailPage() {
 
   const handleCreateTask = async () => {
     try {
-      await axios.post(`http://localhost:3001/api/tasks`, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/tasks`, {
         ...taskFormData,
         board_id: parseInt(boardId),
       });
@@ -128,7 +128,7 @@ export default function BoardDetailPage() {
       });
       setOpenTaskDialog(false);
       // Refetch board data
-      const response = await axios.get(`http://localhost:3001/api/boards/${boardId}`);
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/boards/${boardId}`);
       setBoard(response.data);
       setTimeout(() => setToast(null), 3000);
     } catch (err) {

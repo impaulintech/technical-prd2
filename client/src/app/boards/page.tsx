@@ -78,7 +78,7 @@ export default function BoardsPage() {
 
   const handleCreateBoard = async () => {
     try {
-      const response = await axios.post("http://localhost:3001/api/boards", formData);
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/boards`, formData);
       setToast({
         message: `Board "${response.data.name}" created successfully!`,
         type: "success",
@@ -86,7 +86,7 @@ export default function BoardsPage() {
       setFormData({ name: "", description: "", color: "red" });
       setOpenDialog(false);
       // Refetch boards
-      const boardsResponse = await axios.get("http://localhost:3001/api/boards");
+      const boardsResponse = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/boards`);
       setBoards(boardsResponse.data);
       // Auto-hide toast after 3 seconds
       setTimeout(() => setToast(null), 3000);
