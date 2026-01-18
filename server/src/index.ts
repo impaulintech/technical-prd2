@@ -1,9 +1,14 @@
 import express from 'express';
+import boardsRouter from './routes/boards.js';
+import tasksRouter from './routes/tasks.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
+
+app.use('/api/boards', boardsRouter);
+app.use('/api/tasks', tasksRouter);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Server is running', timestamp: new Date() });
